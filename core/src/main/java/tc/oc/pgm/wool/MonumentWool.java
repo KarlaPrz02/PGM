@@ -187,4 +187,9 @@ public class MonumentWool extends TouchableGoal<MonumentWoolFactory>
       return SYMBOL_WOOL_INCOMPLETE;
     }
   }
+
+  @Override
+  public boolean showEnemyTouches() {
+    return true;
+  }
 }
