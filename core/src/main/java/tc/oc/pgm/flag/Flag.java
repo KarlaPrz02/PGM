@@ -1,7 +1,5 @@
 package tc.oc.pgm.flag;
 
-import static net.kyori.adventure.key.Key.key;
-import static net.kyori.adventure.sound.Sound.sound;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.Component.translatable;
 import static tc.oc.pgm.util.material.ColorUtils.COLOR_UTILS;
@@ -76,20 +74,6 @@ public class Flag extends TouchableGoal<FlagDefinition> implements Listener {
   public static final Component DROPPED_SYMBOL = text("\u2691"); // ⚑
   public static final Component CARRIED_SYMBOL = text("\u2794"); // ➔
 
-  public static final Sound PICKUP_SOUND_OWN =
-      sound(key("mob.wither.idle"), Sound.Source.MASTER, 0.7f, 1.2f);
-  public static final Sound DROP_SOUND_OWN =
-      sound(key("mob.wither.hurt"), Sound.Source.MASTER, 0.7f, 1);
-  public static final Sound RETURN_SOUND_OWN =
-      sound(key("mob.zombie.infect"), Sound.Source.MASTER, 1.1f, 1.2f);
-
-  public static final Sound PICKUP_SOUND =
-      sound(key("entity.firework_rocket.blast_far"), Sound.Source.MASTER, 1f, 0.7f);
-  public static final Sound DROP_SOUND =
-      sound(key("entity.firework_rocket.twinkle_far"), Sound.Source.MASTER, 1f, 1f);
-  public static final Sound RETURN_SOUND =
-      sound(key("entity.firework_rocket.twinkle_far"), Sound.Source.MASTER, 1f, 1f);
-
   private final ImmutableSet<NetDefinition> nets;
   private final Location bannerLocation;
   private final ColorUtils.BannerData bannerData;
@@ -97,9 +81,9 @@ public class Flag extends TouchableGoal<FlagDefinition> implements Listener {
   private final ItemStack legacyBannerItem;
   private final AngleProvider bannerYawProvider;
   private final @Nullable Team owner;
-  private final Set<Team> capturers;
-  private final Set<Team> controllers;
-  private final Set<Team> completers;
+  private Set<Team> capturers;
+  private Set<Team> controllers;
+  private Set<Team> completers;
   private BaseState state;
   private boolean transitioning;
 
@@ -115,33 +99,6 @@ public class Flag extends TouchableGoal<FlagDefinition> implements Listener {
     } else {
       this.owner = null;
     }
-
-    ImmutableSet.Builder<Team> capturersBuilder = ImmutableSet.builder();
-    if (tmm != null) {
-      for (Team team : tmm.getTeams()) {
-        Query query = team.getQuery();
-        if (getDefinition().canPickup(query) && canCapture(query)) {
-          capturersBuilder.add(team);
-        }
-      }
-    }
-    this.capturers = capturersBuilder.build();
-
-    ImmutableSet.Builder<Team> controllersBuilder = ImmutableSet.builder();
-    ImmutableSet.Builder<Team> completersBuilder = ImmutableSet.builder();
-    for (NetDefinition net : nets) {
-      PostDefinition netPost = net.getReturnPost();
-      if (netPost != null && netPost.getFallback().getOwner() != null && tmm != null) {
-        Team controller = tmm.getTeam(netPost.getFallback().getOwner());
-        controllersBuilder.add(controller);
-
-        if (net.getReturnPost().getFallback().isPermanent()) {
-          completersBuilder.add(controller);
-        }
-      }
-    }
-    this.controllers = controllersBuilder.build();
-    this.completers = completersBuilder.build();
 
     Banner banner = null;
     pointLoop:
@@ -320,6 +277,34 @@ public class Flag extends TouchableGoal<FlagDefinition> implements Listener {
   // Misc
 
   public void load(FlagMatchModule fmm) {
+    TeamMatchModule tmm = match.getModule(TeamMatchModule.class);
+    ImmutableSet.Builder<Team> capturersBuilder = ImmutableSet.builder();
+    if (tmm != null) {
+      for (Team team : tmm.getTeams()) {
+        Query query = team.getQuery();
+        if (getDefinition().canPickup(query) && canCapture(query)) {
+          capturersBuilder.add(team);
+        }
+      }
+    }
+    this.capturers = capturersBuilder.build();
+
+    ImmutableSet.Builder<Team> controllersBuilder = ImmutableSet.builder();
+    ImmutableSet.Builder<Team> completersBuilder = ImmutableSet.builder();
+    for (NetDefinition net : nets) {
+      PostDefinition netPost = net.getReturnPost();
+      if (netPost != null && netPost.getFallback().getOwner() != null && tmm != null) {
+        Team controller = tmm.getTeam(netPost.getFallback().getOwner());
+        controllersBuilder.add(controller);
+
+        if (net.getReturnPost().getFallback().isPermanent()) {
+          completersBuilder.add(controller);
+        }
+      }
+    }
+    this.controllers = controllersBuilder.build();
+    this.completers = completersBuilder.build();
+
     this.state =
         new Returned(this, fmm.getPost(this.getDefinition().getDefaultPost()), this.bannerLocation);
     this.state.enterState();
